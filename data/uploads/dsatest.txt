@@ -1,0 +1,7 @@
+Data Structures are used to organize data. Algorithms are procedures to process data. 
+
+Data Structures can be linear or non-linear. Linear Data Structures include Stack and Queue. A Stack follows the LIFO principle. A Queue follows the FIFO principle.
+
+Non-Linear Data Structures include Tree and Graph. A Tree is a hierarchical structure. A Graph is a network of nodes. A Binary Search Tree is a special type of Tree. A Binary Search Tree is used for fast searching.
+
+Algorithms can be for sorting or searching. Sorting Algorithms include Quick Sort and Merge Sort. Searching Algorithms include Binary Search. Binary Search is used on sorted data.

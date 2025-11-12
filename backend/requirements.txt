@@ -5,6 +5,7 @@ flask-cors==4.0.0
 # Transformer AI
 transformers>=4.36.0
 torch>=2.2.0
+sentencepiece>=0.1.99
 
 # Install PyTorch CPU version (faster download):
 # pip install torch --index-url https://download.pytorch.org/whl/cpu

@@ -1,0 +1,45 @@
+NODE: Data Structures
+NODE: data
+NODE: Algorithms
+NODE: procedures
+NODE: Linear Data Structures
+NODE: Non-Linear Data Structures
+NODE: Stack
+NODE: Queue
+NODE: LIFO principle
+NODE: FIFO principle
+NODE: Tree
+NODE: Graph
+NODE: hierarchical structure
+NODE: network of nodes
+NODE: Binary Search Tree
+NODE: fast searching
+NODE: sorting
+NODE: searching
+NODE: Sorting Algorithms
+NODE: Searching Algorithms
+NODE: Quick Sort
+NODE: Merge Sort
+NODE: Binary Search
+NODE: sorted data
+EDGE: Data Structures|are used to organize|data
+EDGE: Algorithms|are|procedures
+EDGE: Algorithms|process|data
+EDGE: Data Structures|can be|Linear Data Structures
+EDGE: Data Structures|can be|Non-Linear Data Structures
+EDGE: Linear Data Structures|include|Stack
+EDGE: Linear Data Structures|include|Queue
+EDGE: Stack|follows|LIFO principle
+EDGE: Queue|follows|FIFO principle
+EDGE: Non-Linear Data Structures|include|Tree
+EDGE: Non-Linear Data Structures|include|Graph
+EDGE: Tree|is a|hierarchical structure
+EDGE: Graph|is a|network of nodes
+EDGE: Binary Search Tree|is a special type of|Tree
+EDGE: Binary Search Tree|is used for|fast searching
+EDGE: Algorithms|can be for|sorting
+EDGE: Algorithms|can be for|searching
+EDGE: Sorting Algorithms|include|Quick Sort
+EDGE: Sorting Algorithms|include|Merge Sort
+EDGE: Searching Algorithms|include|Binary Search
+EDGE: Binary Search|is used on|sorted data

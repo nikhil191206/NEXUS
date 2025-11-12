@@ -16,7 +16,8 @@ void load_graph_from_file(Graph* graph, const char* filename) {
         return;
     }
 
-    char line[1024];
+    // INCREASED BUFFER SIZE to prevent overflow from long AI-generated relations
+    char line[4096]; 
     while (fgets(line, sizeof(line), file)) {
         line[strcspn(line, "\r\n")] = 0;
 
@@ -26,7 +27,8 @@ void load_graph_from_file(Graph* graph, const char* filename) {
             trie_insert(graph->autocomplete_trie, node_name);
         }
         else if (strncmp(line, "EDGE:", 5) == 0) {
-            char source[256], relation[256], dest[256];
+            // INCREASED BUFFER SIZE to prevent overflow
+            char source[1024], relation[1024], dest[1024];
             char* rest = line + 6;
 
             char* first_pipe = strchr(rest, '|');
@@ -125,6 +127,8 @@ void bfs_path(Graph* graph, const char* start, const char* end) {
     queue_free(q);
 }
 
+// --- TOPICS FIX ---
+// Modified to print as it finds nodes, making it O(N)
 void dfs_component(GraphNode* node, int component_id) {
     Stack* s = create_stack();
     push(s, node);
@@ -137,6 +141,8 @@ void dfs_component(GraphNode* node, int component_id) {
         }
 
         current->visited = component_id;
+        // PRINTING NODE HERE
+        printf("%s, ", current->name);
 
         Edge* edge = current->edges;
         while (edge != NULL) {
@@ -150,6 +156,8 @@ void dfs_component(GraphNode* node, int component_id) {
     stack_free(s);
 }
 
+// --- TOPICS FIX ---
+// The O(N^2) printing loop has been removed.
 void find_topics(Graph* graph) {
     reset_visited(graph->nodes);
     int component_id = 1;
@@ -160,16 +168,8 @@ void find_topics(Graph* graph) {
             if (!current->visited) {
                 printf("TOPIC_%d: ", component_id);
                 dfs_component(current, component_id);
-
-                for (int j = 0; j < HASH_TABLE_SIZE; j++) {
-                    GraphNode* check = graph->nodes->buckets[j];
-                    while (check != NULL) {
-                        if (check->visited == component_id) {
-                            printf("%s, ", check->name);
-                        }
-                        check = check->next_in_bucket;
-                    }
-                }
+                
+                // The old, inefficient printing loop is now gone.
                 printf("\n");
                 component_id++;
             }
@@ -178,29 +178,30 @@ void find_topics(Graph* graph) {
     }
 }
 
-void mind_map_dfs_recursive(GraphNode* node, int depth, int max_depth) {
+// --- MIND MAP FIX (Solution B) ---
+// This new recursive function outputs clean data for the frontend.
+void mind_map_recursive_data(GraphNode* node, int depth, int max_depth) {
+    // If we've seen this node *in this path* OR we're too deep, stop.
     if (node->visited || depth > max_depth) {
         return;
     }
-
-    node->visited = 1;
-
-    for (int i = 0; i < depth; i++) {
-        printf("  ");
-    }
-    printf("%s\n", node->name);
+    // Mark as visited *for this query*
+    node->visited = 1; 
 
     Edge* edge = node->edges;
     while (edge != NULL) {
-        for (int i = 0; i < depth + 1; i++) {
-            printf("  ");
-        }
-        printf("-[%s]->\n", edge->relation);
-        mind_map_dfs_recursive(edge->destination, depth + 1, max_depth);
+        // Print the clean, machine-readable format: "Source|Relation|Target"
+        printf("%s|%s|%s\n", node->name, edge->relation, edge->destination->name);
+        
+        // Recurse to the destination *before* moving to the next edge
+        mind_map_recursive_data(edge->destination, depth + 1, max_depth);
+        
         edge = edge->next;
     }
 }
 
+// --- MIND MAP FIX (Solution B) ---
+// This is the new main function your nexus_engine calls.
 void mind_map_dfs(Graph* graph, const char* start_node, int max_depth) {
     GraphNode* node = hash_table_find(graph->nodes, start_node);
     if (!node) {
@@ -208,10 +209,15 @@ void mind_map_dfs(Graph* graph, const char* start_node, int max_depth) {
         return;
     }
 
-    reset_visited(graph->nodes);
-    printf("MINDMAP:\n");
-    mind_map_dfs_recursive(node, 0, max_depth);
+    // Reset all visited flags before starting
+    reset_visited(graph->nodes); 
+    
+    printf("MINDMAP_DATA:\n"); // Header for the frontend to parse
+    
+    // Start the recursive call
+    mind_map_recursive_data(node, 0, max_depth);
 }
+
 
 void answer_question(Graph* graph, const char* node_name) {
     GraphNode* node = hash_table_find(graph->nodes, node_name);

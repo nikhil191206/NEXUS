@@ -1,112 +1,118 @@
-from transformers import pipeline
-import re
+import os
+os.environ['PYTHONIOENCODING'] = 'utf-8'
+
+import google.generativeai as genai
 from typing import List, Tuple, Set
+import warnings
+import re
 
-class TransformerHelper:
-    def __init__(self):
-        self.nodes = set()
-        self.edges = []
-        print("Loading transformer models...")
-        print("This may take a minute on first run (downloading models)...")
-        
+warnings.filterwarnings('ignore')
+
+# This is the "magic". A carefully crafted prompt to force Gemini
+# to return *only* the data in the format your C-Core understands.
+SYSTEM_PROMPT = """
+You are a highly intelligent knowledge graph extraction engine. Your task is to read the user-provided text and extract all significant entities and their relationships.
+
+You MUST format your entire output ONLY as a plain text list of NODE and EDGE definitions, exactly as shown below.
+- First, list all unique nodes.
+- Then, list all edges that connect them.
+
+The format is:
+NODE: [Entity Name]
+EDGE: [Source Entity]|[Relationship Type]|[Target Entity]
+
+Here is an example:
+Text: "Python is a language used for data science. Pandas is built on NumPy."
+Your Output:
+NODE: Python
+NODE: language
+NODE: data science
+NODE: Pandas
+NODE: NumPy
+EDGE: Python|is a|language
+EDGE: Python|used for|data science
+EDGE: Pandas|is built on|NumPy
+
+Do not include any other text, explanation, or markdown like "Here is the output:" or "```".
+Your response must be 100% in this format.
+"""
+
+class GeminiHelper:
+    def __init__(self, api_key: str):
         try:
-            self.ner_pipeline = pipeline("ner", model="dslim/bert-base-NER", aggregation_strategy="simple")
-            print("SUCCESS - Loaded NER model (BERT)")
+            genai.configure(api_key=api_key)
+            self.model = genai.GenerativeModel('gemini-2.5-pro')
+            self.generation_config = genai.GenerationConfig(
+                temperature=0.0, # Set to 0.0 for most deterministic, factual output
+            )
+            print("Gemini model loaded successfully.")
         except Exception as e:
-            print(f"ERROR - Could not load NER model: {e}")
-            self.ner_pipeline = None
-        
-        try:
-            self.relation_pipeline = pipeline("text2text-generation", model="google/flan-t5-small")
-            print("SUCCESS - Loaded relation extraction model (T5)")
-        except Exception as e:
-            print(f"ERROR - Could not load relation model: {e}")
-            self.relation_pipeline = None
-
-    def extract_entities(self, text: str) -> Set[str]:
-        entities = set()
-        if self.ner_pipeline:
-            print("   Extracting entities with BERT NER...")
-            ner_results = self.ner_pipeline(text)
-            for entity in ner_results:
-                entity_text = entity['word'].strip().replace(' ##', '')
-                if len(entity_text) > 2:
-                    entities.add(entity_text)
-                    print(f"      Found: {entity_text} ({entity['entity_group']})")
-        
-        capitalized_pattern = r'\b[A-Z][a-z]*(?:\s+[A-Z][a-z]*)*\b'
-        for match in re.finditer(capitalized_pattern, text):
-            term = match.group().strip()
-            if len(term) > 2 and term not in ['The', 'This', 'That', 'A', 'An']:
-                entities.add(term)
-        
-        acronym_pattern = r'\b[A-Z]{2,}\b'
-        for match in re.finditer(acronym_pattern, text):
-            entities.add(match.group())
-        
-        return entities
-
-    def extract_relationships_pattern(self, text: str, entities: Set[str]) -> List[Tuple[str, str, str]]:
-        relationships = []
-        patterns = [
-            (r'(\w+(?:\s+\w+)*)\s+is\s+a\s+type\s+of\s+(\w+(?:\s+\w+)*)', 'is_type_of'),
-            (r'(\w+(?:\s+\w+)*)\s+is\s+a\s+subset\s+of\s+(\w+(?:\s+\w+)*)', 'is_subset_of'),
-            (r'(\w+(?:\s+\w+)*)\s+is\s+an?\s+(\w+(?:\s+\w+)*)', 'is_a'),
-            (r'(\w+(?:\s+\w+)*)\s+uses\s+(\w+(?:\s+\w+)*)', 'uses'),
-            (r'(\w+(?:\s+\w+)*)\s+prevents\s+(\w+(?:\s+\w+)*)', 'prevents'),
-            (r'(\w+(?:\s+\w+)*)\s+improves\s+(\w+(?:\s+\w+)*)', 'improves'),
-            (r'(\w+(?:\s+\w+)*)\s+revolutionized\s+(\w+(?:\s+\w+)*)', 'revolutionized'),
-        ]
-        
-        for pattern, relation in patterns:
-            for match in re.finditer(pattern, text, re.IGNORECASE):
-                source = match.group(1).strip()
-                target = match.group(2).strip()
-                source_match = self._find_entity(source, entities)
-                target_match = self._find_entity(target, entities)
-                if source_match and target_match:
-                    relationships.append((source_match, relation, target_match))
-                    print(f"      Pattern: {source_match} --[{relation}]--> {target_match}")
-        
-        return relationships
-
-    def _find_entity(self, text: str, entities: Set[str]) -> str:
-        if text in entities:
-            return text
-        for entity in entities:
-            if text.lower() in entity.lower() or entity.lower() in text.lower():
-                return entity
-        return None
+            print(f"ERROR: Failed to initialize Gemini model: {e}")
+            self.model = None
 
     def process_document(self, text: str, output_file: str):
-        print("\n" + "="*80)
-        print("TRANSFORMER AI EXTRACTION")
-        print("="*80)
-        print("\n1. Extracting entities with BERT...")
-        entities = self.extract_entities(text)
-        self.nodes = entities
-        print(f"\nSUCCESS - Found {len(entities)} entities")
-        print("\n2. Extracting relationships...")
-        relationships = self.extract_relationships_pattern(text, entities)
-        print(f"\nSUCCESS - Found {len(relationships)} relationships")
-        unique_relationships = list(set(relationships))
+        if not self.model:
+            print("ERROR: Gemini model not available. Cannot process document.")
+            return
+
+        print("Processing document with Gemini API...")
         
-        with open(output_file, 'w', encoding='utf-8') as f:
-            for node in sorted(self.nodes):
-                f.write(f"NODE: {node}\n")
-            for source, relation, target in unique_relationships:
-                f.write(f"EDGE: {source}|{relation}|{target}\n")
-        
-        print("\n" + "="*80)
-        print(f"SUCCESS - Extraction complete!")
-        print(f"SUCCESS - {len(self.nodes)} nodes, {len(unique_relationships)} relationships")
-        print(f"SUCCESS - Output: {output_file}")
-        print("="*80)
+        # Combine the system prompt with the user's text
+        full_prompt = f"{SYSTEM_PROMPT}\n\nHere is the text to process:\n\n{text}"
+
+        try:
+            # Send the request to the API
+            response = self.model.generate_content(
+                full_prompt,
+                generation_config=self.generation_config
+            )
+            
+            # The 'response.text' should be the perfectly formatted graph data
+            graph_data = response.text.strip()
+            
+            # A quick validation to make sure the output isn't garbage
+            if not graph_data.startswith("NODE:") and not graph_data.startswith("EDGE:"):
+                print(f"WARNING: Gemini output did not seem to follow format. Output was:\n{graph_data}")
+                # You could try to clean it, but for now we'll just write it
+            
+            # Write the clean data to the output file
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write(graph_data)
+                
+            print(f"Graph file created at {output_file}")
+            # Log a small part of the output
+            print("\n--- Gemini Output (First 5 lines) ---")
+            print('\n'.join(graph_data.split('\n')[:5]))
+            print("--------------------------------------")
+
+        except Exception as e:
+            print(f"ERROR: Failed to generate content with Gemini: {e}")
+            # Write an empty file so the C-Core doesn't crash
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write("") # Write empty
+            
 
 def process_text_file(input_file: str, output_file: str):
-    with open(input_file, 'r', encoding='utf-8') as f:
-        text = f.read()
-    helper = TransformerHelper()
+    # 1. Get the API Key from environment variables
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        print("ERROR: GEMINI_API_KEY environment variable not set.")
+        print("Please set the variable before running.")
+        return
+
+    # 2. Read the input text
+    try:
+        with open(input_file, 'r', encoding='utf-8') as f:
+            text = f.read()
+            if not text.strip():
+                print("Input file is empty. Skipping.")
+                return
+    except FileNotFoundError:
+        print(f"ERROR: Input file not found at {input_file}")
+        return
+
+    # 3. Process with the helper
+    helper = GeminiHelper(api_key=api_key)
     helper.process_document(text, output_file)
 
 if __name__ == "__main__":
@@ -114,7 +120,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 3:
         print("Usage: python ai_helper.py <input_file> <output_file>")
         sys.exit(1)
-    print("\n" + "="*80)
-    print("NEXUS AI HELPER - Transformer Extraction")
-    print("="*80)
+    
+    print(f"Processing {sys.argv[1]} -> {sys.argv[2]}")
     process_text_file(sys.argv[1], sys.argv[2])
+    print("Processing complete.")
