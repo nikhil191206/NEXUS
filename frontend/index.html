@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus - Personal Knowledge Base</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Nexus</h1>
+            <p>Personal Knowledge Base with AI-Powered Extraction</p>
+        </header>
+
+        <main>
+            <!-- Upload Section -->
+            <section class="section">
+                <h2>1. Upload Document</h2>
+                <div class="form-group">
+                    <input type="file" id="fileInput" accept=".txt" />
+                    <button id="uploadBtn" class="btn">Process Document</button>
+                </div>
+                <div id="uploadStatus" class="status"></div>
+            </section>
+
+            <!-- Query Section -->
+            <section class="section">
+                <h2>2. Query Knowledge Graph</h2>
+
+                <div class="form-group">
+                    <label for="queryType">Query Type:</label>
+                    <select id="queryType">
+                        <option value="path">Find Path Between Nodes</option>
+                        <option value="topics">Discover Topics</option>
+                        <option value="mindmap">Generate Mind Map</option>
+                        <option value="qa">Ask About a Node</option>
+                        <option value="complete">Autocomplete</option>
+                    </select>
+                </div>
+
+                <div id="queryForm">
+                    <!-- Path Query -->
+                    <div id="pathQuery" class="query-inputs">
+                        <input type="text" id="startNode" placeholder="Start Node" list="nodeList" />
+                        <input type="text" id="endNode" placeholder="End Node" list="nodeList" />
+                    </div>
+
+                    <!-- Topics Query -->
+                    <div id="topicsQuery" class="query-inputs" style="display: none;">
+                        <p>Click "Execute Query" to discover all topic clusters.</p>
+                    </div>
+
+                    <!-- Mindmap Query -->
+                    <div id="mindmapQuery" class="query-inputs" style="display: none;">
+                        <input type="text" id="mindmapNode" placeholder="Root Node" list="nodeList" />
+                    </div>
+
+                    <!-- QA Query -->
+                    <div id="qaQuery" class="query-inputs" style="display: none;">
+                        <input type="text" id="qaNode" placeholder="Node Name" list="nodeList" />
+                    </div>
+
+                    <!-- Autocomplete Query -->
+                    <div id="completeQuery" class="query-inputs" style="display: none;">
+                        <input type="text" id="completePrefix" placeholder="Type prefix (e.g., 'Conv')" />
+                    </div>
+
+                    <datalist id="nodeList"></datalist>
+                </div>
+
+                <button id="executeBtn" class="btn">Execute Query</button>
+            </section>
+
+            <!-- Results Section -->
+            <section class="section">
+                <h2>3. Results</h2>
+                <div id="results" class="results">
+                    <p class="placeholder">Query results will appear here...</p>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Powered by C-Core Engine (Custom DSA) + Transformer AI (BERT + T5)</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

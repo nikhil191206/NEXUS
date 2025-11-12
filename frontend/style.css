@@ -1,0 +1,184 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #ffffff;
+    color: #000000;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    text-align: center;
+    padding: 40px 20px;
+    border-bottom: 2px solid #000000;
+    margin-bottom: 40px;
+}
+
+header h1 {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+header p {
+    font-size: 1.1em;
+    color: #333333;
+}
+
+main {
+    margin-bottom: 40px;
+}
+
+.section {
+    margin-bottom: 40px;
+    padding: 30px;
+    border: 2px solid #000000;
+    background: #f9f9f9;
+}
+
+.section h2 {
+    font-size: 1.5em;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #000000;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+input[type="file"],
+input[type="text"],
+select {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #000000;
+    background: #ffffff;
+    font-size: 1em;
+    margin-bottom: 10px;
+}
+
+input[type="file"] {
+    cursor: pointer;
+}
+
+input[type="text"]:focus,
+select:focus {
+    outline: none;
+    border-color: #333333;
+}
+
+.btn {
+    padding: 12px 30px;
+    background: #000000;
+    color: #ffffff;
+    border: 2px solid #000000;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    text-transform: uppercase;
+}
+
+.btn:hover {
+    background: #333333;
+    border-color: #333333;
+}
+
+.btn:active {
+    background: #555555;
+}
+
+#executeBtn {
+    width: 100%;
+    margin-top: 20px;
+}
+
+.query-inputs {
+    margin-top: 20px;
+}
+
+.query-inputs input {
+    margin-bottom: 10px;
+}
+
+.query-inputs p {
+    padding: 20px;
+    background: #ffffff;
+    border: 1px solid #cccccc;
+    text-align: center;
+    color: #666666;
+}
+
+.status {
+    margin-top: 15px;
+    padding: 12px;
+    border: 2px solid #000000;
+    background: #ffffff;
+    display: none;
+}
+
+.status.success {
+    background: #e8e8e8;
+    border-color: #000000;
+}
+
+.status.error {
+    background: #f0f0f0;
+    border-color: #000000;
+    color: #cc0000;
+}
+
+.results {
+    min-height: 200px;
+    padding: 20px;
+    background: #ffffff;
+    border: 2px solid #000000;
+    font-family: 'Courier New', monospace;
+    white-space: pre-wrap;
+    overflow-x: auto;
+}
+
+.placeholder {
+    color: #999999;
+    text-align: center;
+    padding: 60px 20px;
+    font-style: italic;
+}
+
+footer {
+    text-align: center;
+    padding: 20px;
+    border-top: 2px solid #000000;
+    color: #666666;
+    font-size: 0.9em;
+}
+
+@media (max-width: 768px) {
+    header h1 {
+        font-size: 2em;
+    }
+
+    .section {
+        padding: 20px;
+    }
+
+    .btn {
+        padding: 10px 20px;
+    }
+}
