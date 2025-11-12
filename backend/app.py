@@ -5,8 +5,15 @@ import os
 import sys
 import atexit
 import shutil
+import traceback
 
-from ai_helper import process_text_file
+# Import with error handling
+try:
+    from ai_helper import process_text_file
+    print("SUCCESS: ai_helper imported correctly")
+except Exception as e:
+    print(f"ERROR: Could not import ai_helper: {e}")
+    traceback.print_exc()
 
 app = Flask(__name__)
 CORS(app)
@@ -16,8 +23,13 @@ C_ENGINE_PATH = os.path.join(BASE_DIR, 'c_core', 'nexus_engine.exe' if sys.platf
 GRAPH_DATA_PATH = os.path.join(BASE_DIR, 'data', 'graph_data.txt')
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'data', 'uploads')
 
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+# Create folders if they don't exist
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(os.path.dirname(GRAPH_DATA_PATH), exist_ok=True)
+
+print(f"DEBUG: UPLOAD_FOLDER = {UPLOAD_FOLDER}")
+print(f"DEBUG: GRAPH_DATA_PATH = {GRAPH_DATA_PATH}")
+print(f"DEBUG: Folders exist: uploads={os.path.exists(UPLOAD_FOLDER)}, data={os.path.exists(os.path.dirname(GRAPH_DATA_PATH))}")
 
 def cleanup_on_exit():
     """Clean up uploaded files when application closes."""
@@ -34,25 +46,48 @@ atexit.register(cleanup_on_exit)
 @app.route('/api/upload', methods=['POST'])
 def upload_document():
     """Handle document upload and process with transformer AI."""
+    print("\n" + "="*60)
+    print("UPLOAD REQUEST RECEIVED")
+    print("="*60)
+    
     try:
+        print("Step 1: Checking for file in request...")
         if 'file' not in request.files:
+            print("ERROR: No file in request")
             return jsonify({'error': 'No file provided'}), 400
 
         file = request.files['file']
+        print(f"Step 2: File received: {file.filename}")
+        
         if file.filename == '':
+            print("ERROR: Empty filename")
             return jsonify({'error': 'No file selected'}), 400
 
         # Save uploaded file
         filename = file.filename
         input_path = os.path.join(UPLOAD_FOLDER, filename)
+        
+        print(f"Step 3: Saving file to: {input_path}")
         file.save(input_path)
-
+        
+        print(f"Step 4: File saved. Checking if exists: {os.path.exists(input_path)}")
+        if not os.path.exists(input_path):
+            raise Exception(f"File was not saved correctly to {input_path}")
+        
+        print(f"Step 5: File size: {os.path.getsize(input_path)} bytes")
+        
         print(f"\n{'='*60}")
         print(f"Processing: {filename}")
-        print(f"{'='*60}")
+        print(f"Input path: {input_path}")
+        print(f"Output path: {GRAPH_DATA_PATH}")
+        print(f"{'='*60}\n")
 
         # Process with transformer AI
+        print("Step 6: Calling process_text_file()...")
         process_text_file(input_path, GRAPH_DATA_PATH)
+        
+        print("Step 7: Processing complete!")
+        print(f"Step 8: Checking output file exists: {os.path.exists(GRAPH_DATA_PATH)}")
 
         return jsonify({
             'success': True,
@@ -61,8 +96,15 @@ def upload_document():
         })
 
     except Exception as e:
-        import traceback
+        print("\n" + "="*60)
+        print("ERROR IN UPLOAD ENDPOINT:")
+        print("="*60)
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error message: {str(e)}")
+        print("\nFull traceback:")
         traceback.print_exc()
+        print("="*60 + "\n")
+        
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/query', methods=['POST'])
@@ -114,6 +156,7 @@ def query_graph():
         })
 
     except Exception as e:
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/health', methods=['GET'])
@@ -151,40 +194,51 @@ def get_nodes():
 
 @app.route('/api/preload-models', methods=['POST'])
 def preload_models():
-    """Pre-load transformer models before document processing."""
+    """Pre-load transformer models synchronously."""
     try:
-        from flask import Response
-        import json
-
-        def generate():
-            """Generator to stream progress updates."""
-            preload_script = os.path.join(os.path.dirname(__file__), 'preload_models.py')
-
-            # Run preload script and capture output
-            process = subprocess.Popen(
-                [sys.executable, preload_script],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1
-            )
-
-            for line in iter(process.stdout.readline, ''):
-                if line:
-                    # Send progress update to frontend
-                    yield f"data: {json.dumps({'message': line.strip()})}\n\n"
-
-            process.wait()
-
-            if process.returncode == 0:
-                yield f"data: {json.dumps({'success': True, 'message': 'Models loaded successfully'})}\n\n"
-            else:
-                yield f"data: {json.dumps({'success': False, 'error': 'Failed to load models'})}\n\n"
-
-        return Response(generate(), mimetype='text/event-stream')
-
+        print("\n" + "="*60)
+        print("PRELOADING TRANSFORMER MODELS")
+        print("="*60)
+        
+        from transformers import pipeline
+        
+        # Load NER model (BERT)
+        print("Step 1/2: Loading BERT NER model...")
+        ner_pipeline = pipeline(
+            "ner",
+            model="dslim/bert-base-NER",
+            aggregation_strategy="simple"
+        )
+        print("OK - BERT model loaded successfully")
+        
+        # Load T5 model
+        print("Step 2/2: Loading T5 model...")
+        relation_pipeline = pipeline(
+            "text2text-generation",
+            model="google/flan-t5-small"
+        )
+        print("OK - T5 model loaded successfully")
+        
+        # Test the models
+        print("Testing models...")
+        test_text = "Machine Learning is a field of AI."
+        ner_pipeline(test_text)
+        relation_pipeline("test")
+        
+        print("OK - All models ready!")
+        print("="*60 + "\n")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Models preloaded successfully'
+        })
+        
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 if __name__ == '__main__':
     print("\n" + "="*60)
@@ -199,7 +253,7 @@ if __name__ == '__main__':
     print("="*60 + "\n")
 
     try:
-        app.run(debug=True, port=5000)
+        app.run(debug=True, port=5000, use_reloader=False)
     except KeyboardInterrupt:
         print("\n\nShutting down...")
         cleanup_on_exit()

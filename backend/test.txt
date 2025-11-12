@@ -1,0 +1,11 @@
+Machine Learning is a subset of Artificial Intelligence. It enables computers to learn from data without explicit programming.
+
+Deep Learning is a type of Machine Learning that uses Neural Networks with multiple layers. Deep Learning revolutionized Computer Vision and Natural Language Processing.
+
+BERT is a transformer model developed by Google. BERT uses bidirectional training to understand context in text. BERT revolutionized Natural Language Processing tasks.
+
+Convolutional Neural Networks are used in Computer Vision. They are particularly effective for image recognition tasks.
+
+Dropout is a regularization technique used in Neural Networks. Dropout prevents Overfitting by randomly deactivating neurons during training.
+
+Backpropagation is an algorithm that enables Neural Networks to learn. It uses gradient descent to minimize the loss function.
