@@ -10,7 +10,7 @@ typedef struct Graph {
     HashTable* nodes;
     Trie* autocomplete_trie;
 } Graph;
-
+    
 Graph* create_graph();
 void load_graph_from_file(Graph* graph, const char* filename);
 void graph_free(Graph* graph);

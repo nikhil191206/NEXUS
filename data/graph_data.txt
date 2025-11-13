@@ -24,13 +24,13 @@ NODE: Binary Search
 NODE: sorted data
 EDGE: Data Structures|are used to organize|data
 EDGE: Algorithms|are|procedures
-EDGE: Algorithms|process|data
+EDGE: Algorithms|are procedures to process|data
 EDGE: Data Structures|can be|Linear Data Structures
 EDGE: Data Structures|can be|Non-Linear Data Structures
 EDGE: Linear Data Structures|include|Stack
 EDGE: Linear Data Structures|include|Queue
-EDGE: Stack|follows|LIFO principle
-EDGE: Queue|follows|FIFO principle
+EDGE: Stack|follows the|LIFO principle
+EDGE: Queue|follows the|FIFO principle
 EDGE: Non-Linear Data Structures|include|Tree
 EDGE: Non-Linear Data Structures|include|Graph
 EDGE: Tree|is a|hierarchical structure

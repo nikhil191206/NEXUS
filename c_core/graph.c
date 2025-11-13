@@ -16,7 +16,6 @@ void load_graph_from_file(Graph* graph, const char* filename) {
         return;
     }
 
-    // INCREASED BUFFER SIZE to prevent overflow from long AI-generated relations
     char line[4096]; 
     while (fgets(line, sizeof(line), file)) {
         line[strcspn(line, "\r\n")] = 0;

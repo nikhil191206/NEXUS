@@ -15,7 +15,6 @@ function setupEventListeners() {
 }
 
 async function uploadDocument() {
-    // (This function is working, no changes)
     const fileInput = document.getElementById('fileInput');
     const statusDiv = document.getElementById('uploadStatus');
     if (!fileInput.files.length) {
@@ -46,13 +45,11 @@ async function uploadDocument() {
 }
 
 async function executeQuery() {
-    // --- DEBUGGER ---
     console.log('Execute Query button clicked.');
     
     const queryType = document.getElementById('queryType').value;
     const resultsDiv = document.getElementById('results');
 
-    // --- DEBUGGER ---
     console.log(`Query type selected: ${queryType}`);
 
     let queryData = { query_type: queryType };
@@ -86,13 +83,12 @@ async function executeQuery() {
             body: JSON.stringify(queryData)
         });
 
-        // --- DEBUGGER ---
         console.log('Query sent to backend. Awaiting response...');
 
         const data = await response.json();
 
-        // --- DEBUGGER ---
         console.log('Backend response received:', data);
+        console.log('Raw result:', data.result);
 
         if (data.success) {
             displayResults(data.result, queryType);
@@ -100,77 +96,120 @@ async function executeQuery() {
             resultsDiv.innerHTML = `<p style="color: #cc0000;">Error: ${data.error}</p>`;
         }
     } catch (error) {
-        // --- DEBUGGER ---
         console.error('An error occurred in executeQuery:', error);
         resultsDiv.innerHTML = `<p style="color: #cc0000;">Error: ${error.message}</p>`;
     }
 }
 
 function displayResults(result, queryType) {
-    // --- DEBUGGER ---
-    console.log('Displaying results. Query type:', queryType);
-    console.log('Raw result string:', JSON.stringify(result)); // Show the exact string with newlines
+    console.log('=== DISPLAY RESULTS DEBUG ===');
+    console.log('Query type:', queryType);
+    console.log('Result type:', typeof result);
+    console.log('Result length:', result.length);
+    console.log('Result (first 200 chars):', result.substring(0, 200));
+    console.log('Result includes MINDMAP_DATA:', result.includes('MINDMAP_DATA:'));
 
     const resultsDiv = document.getElementById('results');
 
-    // --- DEBUGGER ---
-    // Check our conditions
-    const isMindmap = (queryType === 'mindmap');
-    const startsWithHeader = result.startsWith('MINDMAP_DATA:');
-    console.log(`Is this a mindmap query? ${isMindmap}`);
-    console.log(`Does result start with 'MINDMAP_DATA:'? ${startsWithHeader}`);
-
-
-    if (isMindmap && startsWithHeader) {
-        // --- DEBUGGER ---
-        console.log('Entering Mermaid.js render block.');
-
-        let mermaidString = "graph TD;\n";
-        const lines = result.replace('MINDMAP_DATA:\n', '').trim().split('\n');
-
-        if (lines.length === 0 || (lines.length === 1 && lines[0] === '')) {
-            resultsDiv.innerHTML = '<pre>Mindmap generated. No outgoing edges found for this node.</pre>';
+    if (queryType === 'mindmap') {
+        console.log('Processing mindmap...');
+        
+        // Check if result contains MINDMAP_DATA:
+        if (!result.includes('MINDMAP_DATA:')) {
+            console.error('No MINDMAP_DATA: header found!');
+            resultsDiv.innerHTML = `<pre>Error: Invalid mindmap format\n${result}</pre>`;
             return;
         }
 
-        let edgeCount = 0;
-        lines.forEach(line => {
+        // Extract data after MINDMAP_DATA:
+        let dataString = result.split('MINDMAP_DATA:')[1];
+        if (!dataString) {
+            resultsDiv.innerHTML = '<pre>Mindmap generated but no data found.</pre>';
+            return;
+        }
+        
+        dataString = dataString.trim();
+        console.log('Data string:', dataString);
+        
+        // Split by lines and parse pipe-separated format
+        const lines = dataString.split('\n').filter(line => line.trim());
+        console.log('Number of lines:', lines.length);
+        console.log('Lines:', lines);
+
+        if (lines.length === 0) {
+            resultsDiv.innerHTML = '<pre>Mindmap generated but no relationships found.</pre>';
+            return;
+        }
+
+        // Build Mermaid graph
+        let mermaidString = "graph TD;\n";
+        const processedEdges = new Set(); // Avoid duplicate edges
+        
+        lines.forEach((line, idx) => {
+            console.log(`Processing line ${idx}:`, line);
             const parts = line.split('|');
+            
             if (parts.length === 3) {
-                const [source, relation, target] = parts;
-                mermaidString += `    "${source.trim()}" -- "${relation.trim()}" --> "${target.trim()}";\n`;
-                edgeCount++;
+                const source = parts[0].trim();
+                const relation = parts[1].trim();
+                const target = parts[2].trim();
+                
+                if (source && target) {
+                    // Create unique edge identifier
+                    const edgeKey = `${source}::${target}::${relation}`;
+                    
+                    if (!processedEdges.has(edgeKey)) {
+                        processedEdges.add(edgeKey);
+                        
+                        // Create valid Mermaid node IDs (no spaces or special chars)
+                        const sourceId = 'node_' + source.replace(/[^a-zA-Z0-9]/g, '_');
+                        const targetId = 'node_' + target.replace(/[^a-zA-Z0-9]/g, '_');
+                        
+                        // Sanitize labels for display
+                        const sanitizedSource = source.replace(/"/g, "'");
+                        const sanitizedTarget = target.replace(/"/g, "'");
+                        const sanitizedRelation = relation.replace(/"/g, "'");
+                        
+                        // Add edge to mermaid with proper IDs and labels
+                        mermaidString += `    ${sourceId}["${sanitizedSource}"] -->|"${sanitizedRelation}"| ${targetId}["${sanitizedTarget}"]\n`;
+                        
+                        console.log(`Added edge: ${source} -[${relation}]-> ${target}`);
+                    }
+                }
+            } else {
+                console.warn(`Line ${idx} does not have 3 parts (has ${parts.length}):`, parts);
             }
         });
 
-        if (edgeCount === 0) {
-            resultsDiv.innerHTML = '<pre>Mindmap generated. No edges found in data.</pre>';
+        console.log('Final Mermaid string:\n', mermaidString);
+
+        if (processedEdges.size === 0) {
+            resultsDiv.innerHTML = '<pre>Mindmap generated but no valid relationships found.</pre>';
             return;
         }
 
+        // Render with Mermaid
         resultsDiv.innerHTML = `<div class="mermaid">${mermaidString}</div>`;
         
-        // --- DEBUGGER ---
-        console.log('Attempting to call mermaid.init()');
-
         if (typeof mermaid !== 'undefined') {
-            mermaid.init(undefined, resultsDiv.querySelectorAll('.mermaid'));
-            console.log('Mermaid.js render complete.');
+            try {
+                mermaid.init(undefined, resultsDiv.querySelectorAll('.mermaid'));
+                console.log('Mermaid rendered successfully!');
+            } catch (e) {
+                console.error('Mermaid render error:', e);
+                resultsDiv.innerHTML = `<pre>Mermaid render error: ${e.message}\n\nMermaid code:\n${mermaidString}</pre>`;
+            }
         } else {
-            console.error('Mermaid.js library is not defined!');
-            resultsDiv.innerHTML = '<pre>Error: Mermaid.js library not loaded. (Check index.html)</pre>';
+            console.error('Mermaid library not loaded!');
+            resultsDiv.innerHTML = '<pre>Error: Mermaid.js library not loaded.</pre>';
         }
-    
     } else {
-        // --- DEBUGGER ---
-        console.log('Entering standard <pre> block. (Not a mindmap or check failed).');
+        // Non-mindmap queries
         resultsDiv.innerHTML = `<pre>${result}</pre>`;
     }
 }
 
-
 function handleQueryTypeChange() {
-    // (This function is fine, no changes)
     const queryType = document.getElementById('queryType').value;
     document.querySelectorAll('.query-inputs').forEach(div => div.style.display = 'none');
     switch (queryType) {
@@ -183,7 +222,6 @@ function handleQueryTypeChange() {
 }
 
 async function loadAvailableNodes() {
-    // (This function is fine, no changes)
     try {
         const response = await fetch(`${API_BASE_URL}/nodes`);
         const data = await response.json();
@@ -202,7 +240,6 @@ async function loadAvailableNodes() {
 }
 
 function showStatus(message, type) {
-    // (This function is fine, no changes)
     const statusDiv = document.getElementById('uploadStatus');
     statusDiv.textContent = message;
     statusDiv.className = `status ${type}`;

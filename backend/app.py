@@ -7,6 +7,7 @@ import subprocess
 import sys
 import atexit
 import shutil
+import re
 from ai_helper import process_text_file
 
 app = Flask(__name__)
@@ -28,6 +29,88 @@ def cleanup_on_exit():
             pass
 
 atexit.register(cleanup_on_exit)
+
+def parse_mindmap_output(c_output):
+    """
+    Convert hierarchical mindmap format from C to pipe-separated format for frontend.
+    Input format: 
+        MINDMAP:
+        Root Node
+          -[relation]->
+          Child Node
+            -[relation]->
+            Grandchild
+    Output format: Root|relation|Child (one per line)
+    """
+    # Handle both MINDMAP: and MINDMAP_DATA: headers
+    if not (c_output.startswith('MINDMAP:') or c_output.startswith('MINDMAP_DATA:')):
+        return c_output
+    
+    # Remove header and get data
+    if c_output.startswith('MINDMAP_DATA:'):
+        data = c_output.replace('MINDMAP_DATA:\n', '').replace('MINDMAP_DATA:', '').strip()
+    else:
+        data = c_output.replace('MINDMAP:\n', '').replace('MINDMAP:', '').strip()
+    
+    if not data:
+        return "MINDMAP_DATA:\n"
+    
+    lines = data.split('\n')
+    result = "MINDMAP_DATA:\n"
+    
+    # Stack to keep track of parent nodes at each indentation level
+    parent_stack = []
+    
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        
+        # Calculate indentation level (number of leading spaces / 2)
+        indent = len(line) - len(line.lstrip(' '))
+        content = line.strip()
+        
+        # Skip empty lines
+        if not content:
+            i += 1
+            continue
+        
+        # If line contains -[relation]->
+        if '-[' in content and ']->' in content:
+            # Extract relation
+            match = re.search(r'-\[(.*?)\]->', content)
+            if match:
+                relation = match.group(1)
+                
+                # Get the next non-empty line which should be the target node
+                i += 1
+                while i < len(lines) and not lines[i].strip():
+                    i += 1
+                
+                if i < len(lines):
+                    target_line = lines[i]
+                    target_indent = len(target_line) - len(target_line.lstrip(' '))
+                    target = target_line.strip()
+                    
+                    # Get parent from stack based on indentation
+                    # The parent is the node at the previous indentation level
+                    if parent_stack:
+                        # Find the appropriate parent
+                        while parent_stack and parent_stack[-1][1] >= indent:
+                            parent_stack.pop()
+                        
+                        if parent_stack:
+                            parent = parent_stack[-1][0]
+                            result += f"{parent}|{relation}|{target}\n"
+                    
+                    # Add current target to stack for future children
+                    parent_stack.append((target, target_indent))
+        else:
+            # This is a node name (not a relation)
+            parent_stack.append((content, indent))
+        
+        i += 1
+    
+    return result
 
 @app.route('/api/upload', methods=['POST'])
 def upload_document():
@@ -95,9 +178,16 @@ def query_graph():
         if result.returncode != 0:
             return jsonify({'error': result.stderr}), 500
 
+        # Get the output
+        output = result.stdout.strip()
+        
+        # Parse mindmap output to convert from hierarchical format to pipe-separated format
+        if query_type == 'mindmap':
+            output = parse_mindmap_output(output)
+
         return jsonify({
             'success': True,
-            'result': result.stdout.strip(),
+            'result': output,
             'query_type': query_type
         })
 
